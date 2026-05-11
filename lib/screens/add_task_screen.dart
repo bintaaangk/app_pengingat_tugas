@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../helpers/database_helper.dart';
-import '../helpers/notification_helper.dart';
+import '../helpers/notification_helper.dart'; // Wajib import ini
 import '../models/task.dart';
 
 class AddTaskScreen extends StatefulWidget {
@@ -37,8 +37,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     });
   }
 
-  void _saveTask() async {
+void _saveTask() async {
+    print("➡️ [DEBUG] Tombol simpan ditekan!");
+
     if (_judulController.text.trim().isEmpty || _selectedKategori == null) {
+      print("➡️ [DEBUG] GAGAL: Judul atau kategori kosong.");
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.redAccent, content: Text("Judul dan Mata Kuliah tidak boleh kosong!")));
       return;
     }
@@ -47,11 +50,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     final reminderFinal = DateTime(_reminderDate.year, _reminderDate.month, _reminderDate.day, _reminderTime.hour, _reminderTime.minute);
 
     if (reminderFinal.isAfter(deadlineFinal)) {
+      print("➡️ [DEBUG] GAGAL: Waktu pengingat melebihi deadline.");
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.redAccent, content: Text("Waktu pengingat tidak boleh melebihi deadline!")));
       return;
     }
 
     int notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+    print("➡️ [DEBUG] ID Notifikasi dibuat: $notificationId");
 
     final newTask = Task(
       id: notificationId.toString(),
@@ -63,18 +68,25 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       prioritas: 2, 
     );
 
+    print("➡️ [DEBUG] Menyimpan ke Database...");
     await DatabaseHelper.instance.insertTask(newTask);
-    if (mounted) Navigator.pop(context);
+    print("➡️ [DEBUG] Sukses simpan ke Database!");
 
+    print("➡️ [DEBUG] Memulai request ke NotificationHelper...");
     try {
       await NotificationHelper.scheduleNaggingNotifications(
-        id: notificationId, title: newTask.judul,
-        body: "Deadline $_selectedKategori: ${deadlineFinal.day}/${deadlineFinal.month} Jam ${deadlineFinal.hour}:${deadlineFinal.minute.toString().padLeft(2, '0')}",
-        startNagging: reminderFinal, deadline: deadlineFinal,
+        id: notificationId, 
+        title: "Waktunya Kerjain: ${newTask.judul}! 🔥",
+        body: "Deadline tinggal sebentar lagi! Jangan scroll TikTok terus, ayo buka laptopmu!",
+        startNagging: reminderFinal, 
+        deadline: deadlineFinal,
       );
+      print("➡️ [DEBUG] REQUEST ALARM SUKSES DIKIRIM KE SISTEM HP!");
     } catch (e) {
-      debugPrint("Gagal: $e");
+      print("➡️ [DEBUG] ERROR ALARM HP: $e");
     }
+
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -160,7 +172,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   ),
                   const Padding(
                     padding: EdgeInsets.only(top: 10.0),
-                    child: Text("*Aplikasi akan mengirim notifikasi tiap 2 jam sejak waktu ini.", style: TextStyle(fontSize: 12, color: Colors.white54, fontStyle: FontStyle.italic)),
+                    child: Text("*Aplikasi akan mengirim alarm pop-up HP pada waktu ini.", style: TextStyle(fontSize: 12, color: Colors.white54, fontStyle: FontStyle.italic)),
                   ),
 
                   const SizedBox(height: 40),

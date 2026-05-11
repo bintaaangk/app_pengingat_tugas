@@ -135,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 30),
 
                   const Text(
-                    "Daftar Akun 🚀", 
+                    "Daftar Akun", 
                     style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1),
                   ),
                   const SizedBox(height: 8),

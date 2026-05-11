@@ -120,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 25),
                     
                     const Text(
-                      "Selamat Datang! 👋", 
+                      "Selamat Datang!", 
                       style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1),
                     ),
                     const SizedBox(height: 8),

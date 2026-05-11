@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'screens/login_screen.dart'; // Import halaman login
+import 'screens/login_screen.dart'; 
 import 'helpers/notification_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
-  await NotificationHelper.init();
+  
+  // INI YANG PENTING: Nyalakan mesin alarm saat aplikasi pertama dibuka
+  await NotificationHelper.init(); 
+  
   runApp(const MyApp());
 }
+
+// ... (Sisa kode class MyApp { ... } biarkan sama seperti aslinya)
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

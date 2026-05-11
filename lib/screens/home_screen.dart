@@ -1,3 +1,4 @@
+import 'dart:async'; // Tambahan untuk Timer
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -32,10 +33,152 @@ class HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = "Semua";
   List<String> _categories = ["Semua"];
 
+  // ==========================================
+  // Variabel untuk fitur REWEL
+  // ==========================================
+  Timer? _rewelTimer;
+  bool _isPopupShowing = false; // Mencegah popup menumpuk
+
   @override
   void initState() {
     super.initState();
     refreshData(); 
+    _mulaiSistemRewel(); // Jalankan sistem pengecek rewel saat beranda dibuka
+  }
+
+  @override
+  void dispose() {
+    _rewelTimer?.cancel(); // Matikan timer kalau pindah halaman biar memori aman
+    super.dispose();
+  }
+
+  // ==========================================
+  // SISTEM PENGECEK REWEL (IN-APP NAGGING)
+  // ==========================================
+  void _mulaiSistemRewel() {
+    // Mengecek setiap 10 detik (Bisa diganti jadi per 1 jam atau sesuai kebutuhan)
+    _rewelTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _cekTugasRewel();
+    });
+  }
+
+  Future<void> _cekTugasRewel() async {
+    // Kalau popup lagi muncul atau data kosong, jangan cek dulu
+    if (_isPopupShowing || _allTasks.isEmpty) return; 
+
+    final sekarang = DateTime.now();
+
+    // Cari tugas yang belum selesai dan waktu 'reminderTime'-nya sudah lewat
+    for (var task in _allTasks) {
+      // TAMBAHAN: Kita cek dulu task.reminderTime != null, lalu pakai tanda !
+      if (!task.isDone && task.reminderTime != null && sekarang.isAfter(task.reminderTime!)) {
+        _tampilkanPopupRewel(task);
+        break; // Tampilkan 1 popup saja untuk tugas yang mendesak
+      }
+    }
+  }
+    
+  
+
+  void _tampilkanPopupRewel(Task task) {
+    setState(() => _isPopupShowing = true);
+
+    // Format jam deadline
+    String pad(int n) => n.toString().padLeft(2, '0');
+    String jamDeadline = "${pad(task.deadline.hour)}:${pad(task.deadline.minute)}";
+    String tglDeadline = "${pad(task.deadline.day)}/${pad(task.deadline.month)}/${task.deadline.year}";
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Tidak bisa ditutup sembarangan pake klik luar
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(25),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1C20).withValues(alpha: 0.8), // Hitam transparan
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.5), width: 2), // Pendar ungu
+                boxShadow: [
+                  BoxShadow(color: Colors.purpleAccent.withValues(alpha: 0.3), blurRadius: 30, spreadRadius: 5)
+                ]
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: const Icon(Icons.notifications_active_rounded, color: Colors.purpleAccent, size: 50),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  const Text("Misi Hampir Gagal!", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  
+                  Text(
+                    "Tugas '${task.judul}' kamu sudah memasuki masa 'Rewel'.",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 15),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
+                    child: Text("Deadline: $tglDeadline, Jam $jamDeadline", style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 15),
+
+                  const Text(
+                    "Jangan ditunda lagi, Bintang. Ayo cicil pengerjaannya sekarang!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                  const SizedBox(height: 25),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C63FF),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 10,
+                        shadowColor: const Color(0xFF6C63FF).withValues(alpha: 0.5),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() => _isPopupShowing = false);
+                        // Arahkan langsung ke Detail Tugas
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => DetailTaskScreen(task: task))).then((_) => refreshData());
+                      },
+                      child: const Text("MULAI KERJAKAN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // Tunda popup 5 menit kalau user pencet 'Nanti Dulu'
+                      Future.delayed(const Duration(minutes: 5), () {
+                        if (mounted) setState(() => _isPopupShowing = false);
+                      });
+                    },
+                    child: const Text("Nanti Dulu", style: TextStyle(color: Colors.white54)),
+                  )
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    );
   }
 
   Future<void> refreshData() async {
